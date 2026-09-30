@@ -24,19 +24,47 @@ class Conexion:
         except Error as e:
             print(f"Error al conectar a la base de datos: {e}")
 
-    def consultar(self, sql):
+    def _verificar_conexion(self):
+        """Verifica que la conexión esté viva; si no, la reconecta."""
+        try:
+            if not self.conexion.is_connected():
+                print("⚠️ Reconectando a la base de datos...")
+                self.conexion.reconnect(attempts=3, delay=1)
+                print("✅ Reconexión exitosa")
+        except Error as e:
+            print(f"Error al reconectar: {e}")
+            try:
+                self.conexion = mysql.connector.connect(
+                    host=self.host,
+                    user=self.user,
+                    password=self.password,
+                    database=self.database
+                )
+                print("✅ Nueva conexión creada")
+            except Error as e2:
+                print(f"❌ Reconexión fallida: {e2}")
+
+    def consultar(self, sql, datos=None):
+        self._verificar_conexion()
         try:
             cursor = self.conexion.cursor(dictionary=True)
-            cursor.execute(sql)
+            if datos:
+                cursor.execute(sql, datos)
+            else:
+                cursor.execute(sql)
             return cursor.fetchall()
         except Error as e:
             print(f"Error al consultar la base de datos: {e}")
             return None
 
-    def ejecutar(self, sql, datos):
+    def ejecutar(self, sql, datos=None):
+        self._verificar_conexion()
         try:
             cursor = self.conexion.cursor()
-            cursor.execute(sql, datos)
+            if datos:
+                cursor.execute(sql, datos)
+            else:
+                cursor.execute(sql)
             self.conexion.commit()
             return 'ok'
         except Error as e:
