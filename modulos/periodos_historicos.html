@@ -1,0 +1,122 @@
+<form id="frmPeriodosHistoricos">
+    <div class="card text-bg-dark mb-3" style="min-width: 800px;">
+        <div class="card-header">
+            <div class="d-flex">
+                Períodos Registrados del Cliente
+                <div class="ms-auto">
+                    <button data-form="periodos_historicos" type="button" class="btn-close btn-close-white"
+                        aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row p-1">
+                <div class="col-md-6">
+                    <label class="text-white">Cliente (solo empresa)</label>
+                    <select class="form-control" id="cboClientePeriodos" name="cboClientePeriodos">
+                        <option value="">-- Seleccione un cliente --</option>
+                    </select>
+                </div>
+            </div>
+            <div id="resumenPeriodos" class="alert alert-secondary text-center" style="display:none;">
+                <strong>Impuesto mensual vigente:</strong> $<span id="precioVigente">0.00</span>
+                &nbsp;|&nbsp;
+                <strong>Total referencial de períodos:</strong> $<span id="totalAdministrativo">0.00</span>
+                <br>
+                <small class="text-muted">El total es solo un acumulado administrativo. NO se cobra cada mes.</small>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Desde</th>
+                            <th>Hasta</th>
+                            <th>Producto</th>
+                            <th>Balance</th>
+                            <th>Precio</th>
+                            <th>Estado</th>
+                            <th>Fórmula</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tblPeriodosHistoricos">
+                        <tr>
+                            <td colspan="7" class="text-center text-muted">Seleccione un cliente para ver sus períodos.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</form>
+
+<script>
+    async function cargarClientesEmpresaPeriodos() {
+        let response = await fetch('/clientes?buscar=');
+        let datos = await response.json();
+        let opciones = '<option value="">-- Seleccione un cliente --</option>';
+        datos.forEach(c => {
+            if (c.tipo === 'empresa') {
+                opciones += `<option value="${c.idCliente}">${c.codigo} - ${c.nombre}</option>`;
+            }
+        });
+        document.getElementById('cboClientePeriodos').innerHTML = opciones;
+    }
+
+    async function cargarPeriodosHistoricos() {
+        let clienteId = document.getElementById('cboClientePeriodos').value;
+        let tbl = document.getElementById('tblPeriodosHistoricos');
+        let resumen = document.getElementById('resumenPeriodos');
+
+        if (!clienteId) {
+            tbl.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Seleccione un cliente para ver sus períodos.</td></tr>';
+            resumen.style.display = 'none';
+            return;
+        }
+
+        let response = await fetch(`/periodos_impuesto?cliente_id=${clienteId}`);
+        let datos = await response.json();
+
+        if (!datos || datos.length === 0) {
+            tbl.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Este cliente aún no tiene períodos registrados.</td></tr>';
+            resumen.style.display = 'none';
+            return;
+        }
+
+        let hoy = new Date().toISOString().split('T')[0];
+        let precioVigente = 0;
+        let totalAdmin = 0;
+        let filas = '';
+
+        datos.forEach(p => {
+            let estadoMostrar = p.estado;
+            if (p.fecha_desde <= hoy && p.fecha_hasta > hoy) {
+                estadoMostrar = 'Vigente según fecha';
+                precioVigente = parseFloat(p.precio_calculado);
+            }
+            totalAdmin += parseFloat(p.precio_calculado);
+
+            filas += `
+                <tr>
+                    <td>${p.fecha_desde}</td>
+                    <td>${p.fecha_hasta}</td>
+                    <td>${p.producto_codigo}</td>
+                    <td>$${parseFloat(p.balance).toFixed(2)}</td>
+                    <td>$${parseFloat(p.precio_calculado).toFixed(2)}</td>
+                    <td>${estadoMostrar}</td>
+                    <td><small>${p.formula_usada || ''}</small></td>
+                </tr>
+            `;
+        });
+        tbl.innerHTML = filas;
+
+        document.getElementById('precioVigente').textContent = precioVigente.toFixed(2);
+        document.getElementById('totalAdministrativo').textContent = totalAdmin.toFixed(2);
+        resumen.style.display = 'block';
+    }
+
+    document.getElementById('cboClientePeriodos').addEventListener('change', cargarPeriodosHistoricos);
+
+    // Inicializar
+    cargarClientesEmpresaPeriodos();
+</script>

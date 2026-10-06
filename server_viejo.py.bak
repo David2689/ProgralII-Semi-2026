@@ -1,5 +1,5 @@
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from urllib import parse
+from urllib import parse 
 from urllib.parse import urlparse, parse_qs
 import crud_clientes
 import logica_impuesto
@@ -27,16 +27,19 @@ class miServidor(SimpleHTTPRequestHandler):
 
         ruta = urlparse(self.path).path
 
+        # Rutas existentes (clientes)
         if ruta == "/cliente":
             respuesta = {'msg': crudClientes.administrar(datos)}
             self._responder_json(respuesta)
             return
 
+        # NUEVA: Guardar período de impuesto
         if ruta == "/periodo_impuesto":
             respuesta = logicaImp.guardar_periodo(datos)
             self._responder_json(respuesta)
             return
 
+        # NUEVA: Calcular impuesto (vista previa)
         if ruta == "/calcular_impuesto":
             balance = float(datos.get('balance', 0))
             producto = int(datos.get('producto_codigo', 11801))
@@ -56,12 +59,14 @@ class miServidor(SimpleHTTPRequestHandler):
             self._responder_json(datos if datos is not None else [])
             return
 
+        # NUEVA: Períodos de un cliente
         if urlParse.path == "/periodos_impuesto":
             cliente_id = qs.get('cliente_id', ['0'])[0]
             datos = logicaImp.consultar_periodos(cliente_id)
             self._responder_json(datos if datos is not None else [])
             return
 
+        # Módulos dinámicos del ingeniero
         if urlParse.path == "/vistas":
             form = qs.get('form', [''])[0]
             self.path = f"/modulos/{form}.html"

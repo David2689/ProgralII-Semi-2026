@@ -1,0 +1,133 @@
+<form id="frmImpuesto">
+    <div class="card text-bg-dark mb-3" style="min-width: 800px;">
+        <div class="card-header">
+            <div class="d-flex">
+                Impuesto a las Actividades Economicas
+                <div class="ms-auto">
+                    <button data-form="impuesto" type="button" class="btn-close btn-close-white" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="row p-1">
+                        <div class="col">
+                            <label class="text-white">Cliente (solo empresa)</label>
+                            <select class="form-control" id="cboClienteImpuesto" required>
+                                <option value="">-- Seleccione un cliente --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row p-1">
+                        <div class="col">
+                            <label class="text-white">Producto</label>
+                            <select class="form-control" id="cboProductoImpuesto">
+                                <option value="11801">11801 - Comercio</option>
+                                <option value="11802">11802 - Industria</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row p-1">
+                        <div class="col-6">
+                            <label class="text-white">Desde</label>
+                            <input type="date" class="form-control" id="txtDesdeImpuesto" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="text-white">Hasta</label>
+                            <input type="date" class="form-control" id="txtHastaImpuesto" required>
+                        </div>
+                    </div>
+                    <div class="row p-1">
+                        <div class="col">
+                            <label class="text-white">Balance o Activo</label>
+                            <input type="number" step="0.01" class="form-control" id="txtBalanceImpuesto" placeholder="0.00" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            Detalle del Calculo (Vista Previa)
+                        </div>
+                        <div class="card-body" id="detalleCalculo" style="color: #000;">
+                            <p class="text-muted">Ingrese un balance para ver el calculo...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer text-center">
+            <input type="submit" value="Guardar Periodo" class="btn btn-success">
+            <input type="reset" value="Limpiar" class="btn btn-warning">
+        </div>
+    </div>
+</form>
+<script>
+async function cargarClientesEmpresa() {
+    let response = await fetch('/clientes?buscar=');
+    let datos = await response.json();
+    let opciones = '<option value="">-- Seleccione un cliente --</option>';
+    datos.forEach(c => {
+        if (c.tipo === 'empresa') {
+            opciones += `<option value="${c.idCliente}">${c.codigo} - ${c.nombre}</option>`;
+        }
+    });
+    document.getElementById('cboClienteImpuesto').innerHTML = opciones;
+}
+async function vistaPreviaImpuesto() {
+    let balance = parseFloat(document.getElementById('txtBalanceImpuesto').value);
+    let producto = parseInt(document.getElementById('cboProductoImpuesto').value);
+    let detalle = document.getElementById('detalleCalculo');
+    if (isNaN(balance) || balance <= 0) {
+        detalle.innerHTML = '<p class="text-muted">Ingrese un balance mayor que cero.</p>';
+        return;
+    }
+    let response = await fetch('/calcular_impuesto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ balance, producto_codigo: producto })
+    });
+    let r = await response.json();
+    if (r.error) {
+        detalle.innerHTML = '<div class="alert alert-danger">' + r.error + '</div>';
+        return;
+    }
+    detalle.innerHTML = '<table class="table table-sm">' +
+        '<tr><th>Balance:</th><td>$' + r.balance.toFixed(2) + '</td></tr>' +
+        '<tr><th>Rango aplicado:</th><td>' + r.rango_desde + ' - ' + r.rango_hasta + '</td></tr>' +
+        '<tr><th>Precio base:</th><td>$' + r.precio_base.toFixed(2) + '</td></tr>' +
+        '<tr><th>Excedente:</th><td>$' + r.excedente.toFixed(2) + '</td></tr>' +
+        '<tr><th>Bloques (CEIL):</th><td>' + r.bloques + '</td></tr>' +
+        '<tr><th>Adicional:</th><td>$' + r.adicional.toFixed(2) + '</td></tr>' +
+        '<tr><th>Porcentaje:</th><td>' + r.porcentaje + '%</td></tr>' +
+        '<tr class="table-success"><th>Impuesto Mensual:</th><td><strong>$' + r.precio_mostrar.toFixed(2) + '</strong></td></tr>' +
+        '</table><small class="text-muted">' + r.formula_usada + '</small>';
+}
+document.getElementById('frmImpuesto').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    let datos = {
+        cliente_id: document.getElementById('cboClienteImpuesto').value,
+        producto_codigo: document.getElementById('cboProductoImpuesto').value,
+        fecha_desde: document.getElementById('txtDesdeImpuesto').value,
+        fecha_hasta: document.getElementById('txtHastaImpuesto').value,
+        balance: document.getElementById('txtBalanceImpuesto').value
+    };
+    let response = await fetch('/periodo_impuesto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(datos)
+    });
+    let r = await response.json();
+    if (r.msg !== 'ok') {
+        alert("Error: " + r.msg);
+        return;
+    }
+    alert('Periodo guardado correctamente. Impuesto mensual: $' + r.detalle.precio_mostrar.toFixed(2));
+    document.getElementById('frmImpuesto').reset();
+    document.getElementById('detalleCalculo').innerHTML = '<p class="text-muted">Ingrese un balance para ver el calculo...</p>';
+});
+document.getElementById('txtBalanceImpuesto').addEventListener('input', vistaPreviaImpuesto);
+document.getElementById('cboProductoImpuesto').addEventListener('change', vistaPreviaImpuesto);
+cargarClientesEmpresa();
+</script>

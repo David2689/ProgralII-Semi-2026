@@ -25,12 +25,10 @@ class Conexion:
             print(f"Error al conectar a la base de datos: {e}")
 
     def _verificar_conexion(self):
-        """Verifica que la conexión esté viva; si no, la reconecta."""
         try:
             if not self.conexion.is_connected():
-                print("⚠️ Reconectando a la base de datos...")
+                print("Reconectando a la base de datos...")
                 self.conexion.reconnect(attempts=3, delay=1)
-                print("✅ Reconexión exitosa")
         except Error as e:
             print(f"Error al reconectar: {e}")
             try:
@@ -40,9 +38,8 @@ class Conexion:
                     password=self.password,
                     database=self.database
                 )
-                print("✅ Nueva conexión creada")
             except Error as e2:
-                print(f"❌ Reconexión fallida: {e2}")
+                print(f"Reconexion fallida: {e2}")
 
     def consultar(self, sql, datos=None):
         self._verificar_conexion()
@@ -54,7 +51,7 @@ class Conexion:
                 cursor.execute(sql)
             return cursor.fetchall()
         except Error as e:
-            print(f"Error al consultar la base de datos: {e}")
+            print(f"Error al consultar: {e}")
             return None
 
     def ejecutar(self, sql, datos=None):
@@ -68,5 +65,5 @@ class Conexion:
             self.conexion.commit()
             return 'ok'
         except Error as e:
-            print(f"Error al ejecutar la consulta: {e}")
+            print(f"Error al ejecutar: {e}")
             return f'Error: {e}'
