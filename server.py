@@ -1,12 +1,14 @@
 from http.server import HTTPServer, SimpleHTTPRequestHandler
-from urllib import parse
+from urllib import parse 
 from urllib.parse import urlparse, parse_qs
 import crud_clientes
+import crud_productos
 import logica_impuesto
 import json
 
 port = 3000
 crudClientes = crud_clientes.crud_clientes()
+crudProductos = crud_productos.crud_productos()
 logicaImp = logica_impuesto.LogicaImpuesto(crud_clientes.db)
 
 
@@ -27,21 +29,38 @@ class miServidor(SimpleHTTPRequestHandler):
 
         ruta = urlparse(self.path).path
 
+        # Ruta unificada por campo "modulo" (del ingeniero)
+        if ruta == "/":
+            modulo = datos.get("modulo", "")
+            if modulo == "cliente":
+                self._responder_json({'msg': crudClientes.administrar(datos)})
+                return
+            elif modulo == "producto":
+                self._responder_json({'msg': crudProductos.administrar(datos)})
+                return
+            elif modulo == "periodo_impuesto":
+                self._responder_json(logicaImp.guardar_periodo(datos))
+                return
+            elif modulo == "calcular_impuesto":
+                balance = float(datos.get('balance', 0))
+                producto = int(datos.get('producto_codigo', 11801))
+                self._responder_json(logicaImp.calcular(balance, producto))
+                return
+
+        # Rutas directas (para compatibilidad con productos.html del ingeniero)
         if ruta == "/cliente":
-            respuesta = {'msg': crudClientes.administrar(datos)}
-            self._responder_json(respuesta)
+            self._responder_json({'msg': crudClientes.administrar(datos)})
             return
-
+        if ruta == "/producto":
+            self._responder_json({'msg': crudProductos.administrar(datos)})
+            return
         if ruta == "/periodo_impuesto":
-            respuesta = logicaImp.guardar_periodo(datos)
-            self._responder_json(respuesta)
+            self._responder_json(logicaImp.guardar_periodo(datos))
             return
-
         if ruta == "/calcular_impuesto":
             balance = float(datos.get('balance', 0))
             producto = int(datos.get('producto_codigo', 11801))
-            respuesta = logicaImp.calcular(balance, producto)
-            self._responder_json(respuesta)
+            self._responder_json(logicaImp.calcular(balance, producto))
             return
 
         self._responder_json({'msg': 'Ruta no encontrada'}, 404)
@@ -52,14 +71,17 @@ class miServidor(SimpleHTTPRequestHandler):
 
         if urlParse.path == "/clientes":
             buscar = qs.get('buscar', [''])[0]
-            datos = crudClientes.consultar(buscar)
-            self._responder_json(datos if datos is not None else [])
+            self._responder_json(crudClientes.consultar(buscar) or [])
+            return
+
+        if urlParse.path == "/productos":
+            buscar = qs.get('buscar', [''])[0]
+            self._responder_json(crudProductos.consultar(buscar) or [])
             return
 
         if urlParse.path == "/periodos_impuesto":
             cliente_id = qs.get('cliente_id', ['0'])[0]
-            datos = logicaImp.consultar_periodos(cliente_id)
-            self._responder_json(datos if datos is not None else [])
+            self._responder_json(logicaImp.consultar_periodos(cliente_id) or [])
             return
 
         if urlParse.path == "/vistas":
