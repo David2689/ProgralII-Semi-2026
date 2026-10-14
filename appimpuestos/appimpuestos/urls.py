@@ -14,9 +14,19 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+
 from django.contrib import admin
 from django.urls import path
+from clientes.views import index, hola_mundo, saludo_nombre
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', index, name='index'),  # Ruta raíz que ahora sí funcionará
+    path('saludo/', hola_mundo, name='hola_mundo'),
+    path('saludo/<str:nombre>/', saludo_nombre, name='saludo_nombre'),
+    # Nota: Si vas a usar la ruta con edad, recuerda actualizar también tu vista en views.py 
+    # para que reciba el parámetro edad, por ejemplo: def saludo_nombre(request, nombre, edad=None):
+    path('saludo/<str:nombre>/<int:edad>/', saludo_nombre, name='saludo_nombre_edad'),
 ]
+
+
