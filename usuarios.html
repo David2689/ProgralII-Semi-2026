@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Usuarios</title>
+    <style>
+        body {
+            font-family: Arial;
+            padding: 20px;
+            background: #f0f2f5;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        input {
+            padding: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            margin-bottom: 5px;
+        }
+
+        button {
+            padding: 8px 15px;
+            background: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        button.delete {
+            background: #dc3545;
+        }
+
+        button.edit {
+            background: #ffc107;
+            color: black;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background: #f2f2f2;
+        }
+
+        #busqueda {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Gestión de Usuarios (USSS001825)</h2>
+        <button onclick="window.location.href='/'" style="background: #dc3545; float: right; margin-top: -40px;">Cerrar
+            Sesión</button>
+
+        <input type="hidden" id="idUsuario" value="">
+        <div class="form-group"><input type="text" id="usuario" placeholder="Usuario" required></div>
+        <div class="form-group"><input type="password" id="clave" placeholder="Clave" required></div>
+        <div class="form-group"><input type="text" id="nombre" placeholder="Nombre Completo" required></div>
+        <div class="form-group"><input type="text" id="direccion" placeholder="Dirección" required></div>
+        <div class="form-group"><input type="text" id="telefono" placeholder="Teléfono" required></div>
+
+        <button onclick="guardarUsuario()" id="btnGuardar">Registrar Usuario</button>
+        <button onclick="limpiarFormulario()" style="background: gray;">Cancelar</button>
+
+        <hr>
+
+        <h3>Buscar Usuarios</h3>
+        <input type="text" id="busqueda" placeholder="Buscar por nombre o usuario..." onkeyup="buscarUsuarios()">
+
+        <table id="tablaUsuarios">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Usuario</th>
+                    <th>Nombre</th>
+                    <th>Dirección</th>
+                    <th>Teléfono</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        window.onload = () => buscarUsuarios();
+
+        async function guardarUsuario() {
+            const id = document.getElementById('idUsuario').value;
+            const datos = {
+                idUsuario: id ? parseInt(id) : null,
+                usuario: document.getElementById('usuario').value,
+                clave: document.getElementById('clave').value,
+                nombre: document.getElementById('nombre').value,
+                direccion: document.getElementById('direccion').value,
+                telefono: document.getElementById('telefono').value
+            };
+
+            const url = id ? '/api/actualizar' : '/api/crear';
+            const respuesta = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+            const data = await respuesta.json();
+
+            alert(data.mensaje);
+            if (data.status === 'ok') {
+                limpiarFormulario();
+                buscarUsuarios();
+            }
+        }
+
+        async function buscarUsuarios() {
+            const termino = document.getElementById('busqueda').value;
+            const respuesta = await fetch('/api/buscar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ termino: termino })
+            });
+            const data = await respuesta.json();
+
+            const tbody = document.querySelector('#tablaUsuarios tbody');
+            tbody.innerHTML = '';
+
+            if (data.status === 'ok') {
+                data.data.forEach(user => {
+                    const row = tbody.insertRow();
+                    row.innerHTML = `
+                        <td>${user.idUsuario}</td>
+                        <td>${user.usuario}</td>
+                        <td>${user.nombre}</td>
+                        <td>${user.direccion}</td>
+                        <td>${user.telefono}</td>
+                        <td>
+                            <button class="edit" onclick="editarUsuario(${user.idUsuario}, '${user.usuario}', '${user.clave}', '${user.nombre}', '${user.direccion}', '${user.telefono}')">Editar</button>
+                            <button class="delete" onclick="eliminarUsuario(${user.idUsuario})">Eliminar</button>
+                        </td>
+                    `;
+                });
+            }
+        }
+
+        function editarUsuario(id, usuario, clave, nombre, direccion, telefono) {
+            document.getElementById('idUsuario').value = id;
+            document.getElementById('usuario').value = usuario;
+            document.getElementById('clave').value = clave;
+            document.getElementById('nombre').value = nombre;
+            document.getElementById('direccion').value = direccion;
+            document.getElementById('telefono').value = telefono;
+            document.getElementById('btnGuardar').textContent = 'Actualizar Usuario';
+        }
+
+        async function eliminarUsuario(id) {
+            if (!confirm('¿Estás seguro de eliminar este usuario?')) return;
+
+            const respuesta = await fetch('/api/eliminar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idUsuario: id })
+            });
+            const data = await respuesta.json();
+            alert(data.mensaje);
+            if (data.status === 'ok') buscarUsuarios();
+        }
+
+        function limpiarFormulario() {
+            document.getElementById('idUsuario').value = '';
+            document.getElementById('usuario').value = '';
+            document.getElementById('clave').value = '';
+            document.getElementById('nombre').value = '';
+            document.getElementById('direccion').value = '';
+            document.getElementById('telefono').value = '';
+            document.getElementById('btnGuardar').textContent = 'Registrar Usuario';
+        }
+    </script>
+</body>
+
+</html>

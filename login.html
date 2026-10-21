@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Parcial II</title>
+    <style>
+        body {
+            font-family: Arial;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f0f2f5;
+        }
+
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        #mensaje {
+            color: red;
+            text-align: center;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-box">
+        <h2 style="text-align: center;">Iniciar Sesión</h2>
+        <form id="formLogin">
+            <input type="text" id="usuario" placeholder="Usuario" required>
+            <input type="password" id="clave" placeholder="Clave" required>
+            <button type="submit">Entrar</button>
+        </form>
+        <div id="mensaje"></div>
+        <p style="text-align: center; margin-top: 15px; font-size: 14px;">
+            ¿No tienes cuenta? <a href="/usuarios.html">Regístrate aquí</a>
+        </p>
+    </div>
+
+    <script>
+        document.getElementById('formLogin').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const usuario = document.getElementById('usuario').value;
+            const clave = document.getElementById('clave').value;
+            const mensajeDiv = document.getElementById('mensaje');
+
+            const respuesta = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usuario, clave })
+            });
+            const data = await respuesta.json();
+
+            if (data.status === 'ok') {
+                window.location.href = '/usuarios.html';
+            } else {
+                mensajeDiv.textContent = data.mensaje;
+            }
+        });
+    </script>
+</body>
+
+</html>
