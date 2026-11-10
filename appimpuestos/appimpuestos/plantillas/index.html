@@ -4,12 +4,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Sistema de impuestos a las actividades economicas</title>
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/alertifyjs@1.14.0/build/css/alertify.min.css" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/alertifyjs@1.14.0/build/css/themes/default.min.css" />
+    <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/alertifyjs@1.14.0/build/css/themes/semantic.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.2/themes/base/jquery-ui.css">
 </head>
 
 <body>
-    <h1>hola mundo</h1>
-    <p>Mi primera pagina con Django</p>
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">::.. SISTEMA DE IMPUESTOS A LAS ACTIVIDADES ECONOMICAS ..::</a>
+            <div class="collapse navbar-collapse" id="mnxImpuestos">
+                <div class="navbar-nav">
+                    <a class="nav-link" href="#" data-form="clientes">Clientes</a>
+                    <a class="nav-link" href="#" data-form="buscador_clientes">Buscar Clientes</a>
+                    <a class="nav-link" href="#" data-form="productos">Productos</a>
+                    <a class="nav-link" href="#" data-form="busqueda_productos">Buscar Productos</a>
+                    <a class="nav-link" href="#" data-form="impuesto">Impuesto Act. Económicas</a>
+                    <a class="nav-link" href="#" data-form="periodos_historicos">Períodos Históricos</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- CONTENEDOR DE MÓDULOS -->
+    <div class="container-fluid">
+        <div class="d-flex flex-wrap gap-3 p-3">
+            <div id="clientes"></div>
+            <div id="buscador_clientes"></div>
+            <div id="productos"></div>
+            <div id="busqueda_productos"></div>
+            <div id="impuesto"></div>
+            <div id="periodos_historicos"></div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT -->
+    <script src="https://code.jquery.com/jquery-4.0.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.14.2/jquery-ui.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/alertifyjs@1.14.0/build/alertify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 1. MENÚ PRINCIPAL
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[data-form]').forEach(boton => {
+                boton.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    cargarForm(boton.getAttribute('data-form'));
+                });
+            });
+        });
+
+        // 2. CARGAR PANTALLAS
+        async function cargarForm(nombreForm) {
+            document.querySelectorAll('.position-absolute').forEach(div => div.innerHTML = '');
+
+            let response = await fetch(`/vistas/${nombreForm}/`);
+            let html = await response.text();
+            document.getElementById(nombreForm).innerHTML = html;
+
+            // Si es la pantalla de admin, disparamos la carga
+            if (nombreForm === 'clientes') {
+                document.getElementById('btnGuardarCliente').onclick = (e) => { e.preventDefault(); guardarClientes(); };
+                document.getElementById('btnBuscarCliente').onclick = (e) => { e.preventDefault(); cargarForm('buscador_clientes'); };
+                document.getElementById('btnLimpiarCliente').onclick = (e) => { e.preventDefault(); limpiarFormularioCliente(); };
+            }
+
+            // Si es el buscador, disparamos la búsqueda inicial
+            if (nombreForm === 'buscador_clientes') {
+                let inputBuscar = document.getElementById('txtBuscarCliente');
+                // Buscar al escribir
+                inputBuscar.onkeyup = (e) => obtenerClientes(e.target.value);
+                // Buscar al abrir
+                obtenerClientes();
+            }
+        }
+
+        // 3. GUARDAR CLIENTE
+        async function guardarClientes() {
+            let datos = {
+                codigo: document.getElementById('txtCodigoCliente').value,
+                nombre: document.getElementById('txtNombreCliente').value,
+                direccion: document.getElementById('txtDireccionCliente').value,
+                telefono: document.getElementById('txtTelefonoCliente').value,
+                email: document.getElementById('txtEmailCliente').value,
+                tipo: document.getElementById('cboTipoPersona').value,
+                accion: 'nuevo',
+                idCliente: ''
+            };
+
+            try {
+                let response = await fetch('/guardar_cliente/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                let respuesta = await response.json();
+                if (respuesta.msg != "ok") { alert("Error: " + respuesta.msg); return; }
+                alert("¡Cliente guardado!");
+                limpiarFormularioCliente();
+            } catch (error) { alert("Error al guardar."); }
+        }
+
+        function limpiarFormularioCliente() {
+            document.getElementById('txtCodigoCliente').value = '';
+            document.getElementById('txtNombreCliente').value = '';
+            document.getElementById('txtDireccionCliente').value = '';
+            document.getElementById('txtTelefonoCliente').value = '';
+            document.getElementById('txtEmailCliente').value = '';
+            document.getElementById('cboTipoPersona').value = 'particular';
+        }
+
+        // 4. BUSCAR Y MOSTRAR CLIENTES
+        async function obtenerClientes(buscar = "") {
+            let response = await fetch(`/buscar_clientes/${buscar}`);
+            let respuesta = await response.json();
+
+            // Verificamos que Django nos devuelva la lista
+            let listaClientes = respuesta.datos || [];
+
+            let filas = "";
+            if (listaClientes.length === 0) {
+                filas = '<tr><td colspan="7" class="text-center">No hay clientes</td></tr>';
+            } else {
+                listaClientes.forEach(e => {
+                    filas += `
+                    <tr>
+                        <td>${e.codigo}</td>
+                        <td>${e.nombre}</td>
+                        <td>${e.direccion}</td>
+                        <td>${e.telefono}</td>
+                        <td>${e.email}</td>
+                        <td>${e.tipo}</td>
+                        <td><button class="btn btn-danger btn-sm">DEL</button></td>
+                    </tr>
+                `;
+                });
+            }
+            document.getElementById('tblClientes').innerHTML = filas;
+        }
+    </script>
 </body>
 
 </html>

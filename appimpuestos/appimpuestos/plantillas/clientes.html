@@ -1,0 +1,58 @@
+<form id="frmCliente" onsubmit="return false;">
+    <div class="card text-bg-dark mb-3" style="min-width: 600px;">
+        <div class="card-header">
+            <div class="d-flex">
+                Admin de Clientes
+                <div class="ms-auto">
+                    <button data-form="clientes" type="button" class="btn-close btn-close-white"
+                        aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row p-1">
+                <div class="col-12 col-md-4">
+                    <input pattern="^[0-9]{3,10}$" required placeholder="Codigo" name="txtCodigoCliente"
+                        id="txtCodigoCliente" class="form-control" type="text">
+                </div>
+            </div>
+            <div class="row p-1">
+                <div class="col-12 col-md-8">
+                    <input pattern="^[A-Za-záéíóúÁÉÍÓÚñÑ ]{3,}$" required placeholder="Nombre" name="txtNombreCliente"
+                        id="txtNombreCliente" class="form-control" type="text">
+                </div>
+            </div>
+            <div class="row p-1">
+                <div class="col-12">
+                    <input placeholder="Direccion" name="txtDireccionCliente" id="txtDireccionCliente"
+                        class="form-control" type="text">
+                </div>
+            </div>
+            <div class="row p-1">
+                <div class="col-12 col-md-4">
+                    <input pattern="^[0-9]{4}-[0-9]{4}$" placeholder="Telefono" name="txtTelefonoCliente"
+                        id="txtTelefonoCliente" class="form-control" type="text">
+                </div>
+            </div>
+            <div class="row p-1">
+                <div class="col-12 col-md-8">
+                    <input placeholder="Email" name="txtEmailCliente" id="txtEmailCliente" class="form-control"
+                        type="email">
+                </div>
+            </div>
+            <div class="row p-1">
+                <div class="col-12 col-md-6">
+                    <select class="form-control" name="cboTipoPersona" id="cboTipoPersona">
+                        <option value="particular">Particular</option>
+                        <option value="empresa">Empresa</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer text-center">
+            <input type="button" value="Guardar" class="btn btn-primary" id="btnGuardarCliente">
+            <input type="button" value="Buscar" class="btn btn-secondary" id="btnBuscarCliente">
+            <input type="reset" value="Limpiar" class="btn btn-warning" id="btnLimpiarCliente">
+        </div>
+    </div>
+</form>
