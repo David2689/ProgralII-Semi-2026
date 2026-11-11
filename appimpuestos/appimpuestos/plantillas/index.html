@@ -10,6 +10,25 @@
     <link rel="stylesheet" href="//cdn.jsdelivr.net/npm/alertifyjs@1.14.0/build/css/themes/semantic.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.14.2/themes/base/jquery-ui.css">
+    <style>
+        #contenedor-ventanas {
+            position: relative;
+            height: 80vh;
+            overflow: hidden;
+        }
+
+        .card {
+            position: absolute;
+            cursor: move;
+            z-index: 1000;
+            margin: 0;
+        }
+
+        .card-body,
+        .card-footer {
+            cursor: default;
+        }
+    </style>
 </head>
 
 <body>
@@ -31,15 +50,13 @@
     </nav>
 
     <!-- CONTENEDOR DE MÓDULOS -->
-    <div class="container-fluid">
-        <div class="d-flex flex-wrap gap-3 p-3">
-            <div id="clientes"></div>
-            <div id="buscador_clientes"></div>
-            <div id="productos"></div>
-            <div id="busqueda_productos"></div>
-            <div id="impuesto"></div>
-            <div id="periodos_historicos"></div>
-        </div>
+    <div class="container-fluid" id="contenedor-ventanas">
+        <div id="clientes"></div>
+        <div id="buscador_clientes"></div>
+        <div id="productos"></div>
+        <div id="busqueda_productos"></div>
+        <div id="impuesto"></div>
+        <div id="periodos_historicos"></div>
     </div>
 
     <!-- JAVASCRIPT -->
@@ -65,6 +82,10 @@
             let response = await fetch(`/vistas/${nombreForm}/`);
             let html = await response.text();
             document.getElementById(nombreForm).innerHTML = html;
+            // Posiciones iniciales para que no se superpongan
+            let divVentana = document.getElementById(nombreForm);
+            divVentana.style.left = (nombreForm === 'buscador_clientes') ? '650px' : '50px';
+            divVentana.style.top = '20px';
 
             // Si es la pantalla de admin, disparamos la carga
             if (nombreForm === 'clientes') {
@@ -75,12 +96,23 @@
 
             // Si es el buscador, disparamos la búsqueda inicial
             if (nombreForm === 'buscador_clientes') {
-                let inputBuscar = document.getElementById('txtBuscarCliente');
-                // Buscar al escribir
-                inputBuscar.onkeyup = (e) => obtenerClientes(e.target.value);
-                // Buscar al abrir
-                obtenerClientes();
+                // Esperamos un poquito a que el HTML se dibuje
+                setTimeout(() => {
+                    let inputBuscar = document.getElementById('txtBuscarCliente');
+                    if (inputBuscar) {
+                        // Si escriben, busca
+                        inputBuscar.onkeyup = (e) => obtenerClientes(e.target.value);
+                        // Busca todos al abrir
+                        obtenerClientes();
+                    }
+                }, 50); // 50 milisegundos es suficiente
             }
+            document.querySelectorAll('.btn-close').forEach(btn => {
+                btn.onclick = (e) => {
+                    e.preventDefault();
+                    document.getElementById(nombreForm).innerHTML = '';
+                };
+            });
         }
 
         // 3. GUARDAR CLIENTE
@@ -146,6 +178,64 @@
             }
             document.getElementById('tblClientes').innerHTML = filas;
         }
+        async function eliminarCliente(id) {
+            if (confirm("¿Seguro que querés eliminar este cliente?")) {
+                let response = await fetch('/guardar_cliente/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accion: 'eliminar', idCliente: id })
+                });
+                let respuesta = await response.json();
+                if (respuesta.msg == "ok") {
+                    obtenerClientes(); // Refresca la tabla
+                }
+            }
+        }
+        // --- CÓDIGO PARA MOVER LOS CUADROS (Al final de todo) ---
+        let ventanaActiva = null;
+        let offsetX = 0, offsetY = 0;
+
+        document.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.card-header')) {
+                ventanaActiva = e.target.closest('.card');
+
+                const rect = ventanaActiva.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+
+                document.querySelectorAll('.card').forEach(c => c.style.zIndex = 1000);
+                ventanaActiva.style.zIndex = 1001;
+
+                e.preventDefault(); // Evita que se seleccione el texto al arrastrar
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (ventanaActiva) {
+                ventanaActiva.style.left = (e.clientX - offsetX) + 'px';
+                ventanaActiva.style.top = (e.clientY - offsetY) + 'px';
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            ventanaActiva = null;
+        });
+
+        // --- TRAER AL FRENTE (Bring to Front) ---
+        // Escuchamos cuando hacen clic en cualquier parte de la página
+        document.addEventListener('mousedown', (e) => {
+            // Buscamos si el clic fue dentro de una ventana (.card)
+            const ventanaClickeada = e.target.closest('.card');
+
+            if (ventanaClickeada) {
+                // 1. Mandamos TODAS las ventanas al fondo
+                document.querySelectorAll('.card').forEach(c => c.style.zIndex = 1000);
+
+                // 2. Mandamos la ventana clickeada al frente
+                ventanaClickeada.style.zIndex = 1001;
+            }
+        });
+
     </script>
 </body>
 

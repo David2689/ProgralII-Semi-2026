@@ -23,8 +23,13 @@ def index(request):
 def vistas(request, form):
     return render(request, f"{form}.html")
 
+from django.db.models import Q # Poné esto arriba de todo si no lo tenés
+
 def buscar_clientes(request, buscar):
-    datos = clientes.objects.filter(nombre__icontains=buscar).values()
+    # Busca en el código O en el nombre que contenga el texto
+    datos = clientes.objects.filter(
+        Q(codigo__icontains=buscar) | Q(nombre__icontains=buscar)
+    ).values()
     return JsonResponse({'datos': list(datos)})
 
 @csrf_exempt
