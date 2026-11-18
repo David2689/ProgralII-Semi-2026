@@ -77,45 +77,72 @@
 
         // 2. CARGAR PANTALLAS
         async function cargarForm(nombreForm) {
-            document.querySelectorAll('.position-absolute').forEach(div => div.innerHTML = '');
+            let contenedor = document.getElementById(nombreForm);
 
+            // Si ya está abierto, solo lo traemos al frente
+            if (contenedor.innerHTML.trim() !== "") {
+                document.querySelectorAll('.card').forEach(c => c.style.zIndex = 1000);
+                contenedor.style.zIndex = 1001;
+                return;
+            }
+
+            // Si no está abierto, cargamos el HTML
             let response = await fetch(`/vistas/${nombreForm}/`);
             let html = await response.text();
-            document.getElementById(nombreForm).innerHTML = html;
-            // Posiciones iniciales para que no se superpongan
-            let divVentana = document.getElementById(nombreForm);
-            divVentana.style.left = (nombreForm === 'buscador_clientes') ? '650px' : '50px';
-            divVentana.style.top = '20px';
+            contenedor.innerHTML = html;
 
-            // Si es la pantalla de admin, disparamos la carga
+            // Posición inicial
+            let offset = document.querySelectorAll('.card').length * 30;
+            contenedor.style.left = (nombreForm.includes('buscador') || nombreForm.includes('busqueda')) ? (600 + offset) + 'px' : (50 + offset) + 'px';
+            contenedor.style.top = (20 + offset) + 'px';
+            contenedor.style.zIndex = 1001;
+
+            // EVENTOS DE CLIENTES
             if (nombreForm === 'clientes') {
                 document.getElementById('btnGuardarCliente').onclick = (e) => { e.preventDefault(); guardarClientes(); };
                 document.getElementById('btnBuscarCliente').onclick = (e) => { e.preventDefault(); cargarForm('buscador_clientes'); };
                 document.getElementById('btnLimpiarCliente').onclick = (e) => { e.preventDefault(); limpiarFormularioCliente(); };
             }
 
-            // Si es el buscador, disparamos la búsqueda inicial
             if (nombreForm === 'buscador_clientes') {
-                // Esperamos un poquito a que el HTML se dibuje
                 setTimeout(() => {
                     let inputBuscar = document.getElementById('txtBuscarCliente');
                     if (inputBuscar) {
-                        // Si escriben, busca
                         inputBuscar.onkeyup = (e) => obtenerClientes(e.target.value);
-                        // Busca todos al abrir
                         obtenerClientes();
                     }
-                }, 50); // 50 milisegundos es suficiente
+                }, 50);
             }
+
+            // EVENTOS DE PRODUCTOS
+            if (nombreForm === 'productos') {
+                document.getElementById('btnGuardarProducto').onclick = (e) => { e.preventDefault(); guardarProducto(); };
+                document.getElementById('btnBuscarProducto').onclick = (e) => { e.preventDefault(); cargarForm('busqueda_productos'); };
+                document.getElementById('btnLimpiarProducto').onclick = (e) => { e.preventDefault(); limpiarFormularioProducto(); };
+            }
+
+            if (nombreForm === 'busqueda_productos') {
+                setTimeout(() => {
+                    let inputBuscarProd = document.getElementById('txtBuscarProducto');
+                    if (inputBuscarProd) {
+                        inputBuscarProd.onkeyup = (e) => obtenerProductos(e.target.value);
+                        obtenerProductos();
+                    }
+                }, 50);
+            }
+
+            // EVENTO PARA CERRAR (La X)
             document.querySelectorAll('.btn-close').forEach(btn => {
                 btn.onclick = (e) => {
                     e.preventDefault();
-                    document.getElementById(nombreForm).innerHTML = '';
+                    contenedor.innerHTML = '';
                 };
             });
         }
 
-        // 3. GUARDAR CLIENTE
+        // ==========================================
+        // FUNCIONES DE CLIENTES
+        // ==========================================
         async function guardarClientes() {
             let datos = {
                 codigo: document.getElementById('txtCodigoCliente').value,
@@ -150,15 +177,12 @@
             document.getElementById('cboTipoPersona').value = 'particular';
         }
 
-        // 4. BUSCAR Y MOSTRAR CLIENTES
         async function obtenerClientes(buscar = "") {
             let response = await fetch(`/buscar_clientes/${buscar}`);
             let respuesta = await response.json();
-
-            // Verificamos que Django nos devuelva la lista
             let listaClientes = respuesta.datos || [];
-
             let filas = "";
+
             if (listaClientes.length === 0) {
                 filas = '<tr><td colspan="7" class="text-center">No hay clientes</td></tr>';
             } else {
@@ -171,13 +195,13 @@
                         <td>${e.telefono}</td>
                         <td>${e.email}</td>
                         <td>${e.tipo}</td>
-                        <td><button class="btn btn-danger btn-sm">DEL</button></td>
-                    </tr>
-                `;
+                        <td><button onclick="eliminarCliente(${e.id})" class="btn btn-danger btn-sm">DEL</button></td>
+                    </tr>`;
                 });
             }
             document.getElementById('tblClientes').innerHTML = filas;
         }
+
         async function eliminarCliente(id) {
             if (confirm("¿Seguro que querés eliminar este cliente?")) {
                 let response = await fetch('/guardar_cliente/', {
@@ -187,26 +211,100 @@
                 });
                 let respuesta = await response.json();
                 if (respuesta.msg == "ok") {
-                    obtenerClientes(); // Refresca la tabla
+                    obtenerClientes();
                 }
             }
         }
-        // --- CÓDIGO PARA MOVER LOS CUADROS (Al final de todo) ---
+
+        // ==========================================
+        // FUNCIONES DE PRODUCTOS
+        // ==========================================
+        async function guardarProducto() {
+            let datos = {
+                codigo: document.getElementById('txtCodigoProducto').value,
+                nombre: document.getElementById('txtNombreProducto').value,
+                marca: document.getElementById('txtMarcaProducto').value,
+                precio: document.getElementById('txtPrecioProducto').value,
+                accion: 'nuevo',
+                idProducto: ''
+            };
+
+            try {
+                let response = await fetch('/guardar_producto/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(datos)
+                });
+                let respuesta = await response.json();
+                if (respuesta.msg != "ok") { alert("Error: " + respuesta.msg); return; }
+                alert("¡Producto guardado!");
+                limpiarFormularioProducto();
+            } catch (error) { alert("Error al guardar producto."); }
+        }
+
+        function limpiarFormularioProducto() {
+            document.getElementById('txtCodigoProducto').value = '';
+            document.getElementById('txtNombreProducto').value = '';
+            document.getElementById('txtMarcaProducto').value = '';
+            document.getElementById('txtPrecioProducto').value = '';
+        }
+
+        async function obtenerProductos(buscar = "") {
+            let response = await fetch(`/buscar_productos/${buscar}`);
+            let respuesta = await response.json();
+            let lista = respuesta.datos || [];
+            let filas = "";
+
+            if (lista.length === 0) {
+                filas = '<tr><td colspan="5" class="text-center">No hay productos</td></tr>';
+            } else {
+                lista.forEach(e => {
+                    filas += `
+                    <tr>
+                        <td>${e.codigo}</td>
+                        <td>${e.nombre}</td>
+                        <td>${e.marca}</td>
+                        <td>${e.precio}</td>
+                        <td><button onclick="eliminarProducto(${e.id})" class="btn btn-danger btn-sm">DEL</button></td>
+                    </tr>`;
+                });
+            }
+            document.getElementById('tblProductos').innerHTML = filas;
+        }
+
+        async function eliminarProducto(id) {
+            if (confirm("¿Seguro que querés eliminar este producto?")) {
+                let response = await fetch('/guardar_producto/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ accion: 'eliminar', idProducto: id })
+                });
+                let respuesta = await response.json();
+                if (respuesta.msg == "ok") {
+                    obtenerProductos();
+                }
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DE VENTANAS (MOVER Y TRAER AL FRENTE)
+        // ==========================================
         let ventanaActiva = null;
         let offsetX = 0, offsetY = 0;
 
         document.addEventListener('mousedown', (e) => {
-            if (e.target.closest('.card-header')) {
-                ventanaActiva = e.target.closest('.card');
-
-                const rect = ventanaActiva.getBoundingClientRect();
-                offsetX = e.clientX - rect.left;
-                offsetY = e.clientY - rect.top;
-
+            const ventanaClickeada = e.target.closest('.card');
+            if (ventanaClickeada) {
                 document.querySelectorAll('.card').forEach(c => c.style.zIndex = 1000);
-                ventanaActiva.style.zIndex = 1001;
+                ventanaClickeada.style.zIndex = 1001;
 
-                e.preventDefault(); // Evita que se seleccione el texto al arrastrar
+                if (e.target.closest('.card-header')) {
+                    ventanaActiva = ventanaClickeada;
+                    const rect = ventanaActiva.getBoundingClientRect();
+                    offsetX = e.clientX - rect.left;
+                    offsetY = e.clientY - rect.top;
+                    e.preventDefault();
+                }
             }
         });
 
@@ -220,22 +318,6 @@
         document.addEventListener('mouseup', () => {
             ventanaActiva = null;
         });
-
-        // --- TRAER AL FRENTE (Bring to Front) ---
-        // Escuchamos cuando hacen clic en cualquier parte de la página
-        document.addEventListener('mousedown', (e) => {
-            // Buscamos si el clic fue dentro de una ventana (.card)
-            const ventanaClickeada = e.target.closest('.card');
-
-            if (ventanaClickeada) {
-                // 1. Mandamos TODAS las ventanas al fondo
-                document.querySelectorAll('.card').forEach(c => c.style.zIndex = 1000);
-
-                // 2. Mandamos la ventana clickeada al frente
-                ventanaClickeada.style.zIndex = 1001;
-            }
-        });
-
     </script>
 </body>
 
